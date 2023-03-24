@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo
+    ports:
+      - 3456:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: the_database
+    volumes:
+      - ./bloglist-backend/mongo/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+      - ./bloglist-backend/mongo_data:/data/db
+    container_name: bl-mongo-prod
+
+  server:
+    image: bl-backend-prod
+    build:
+      context: ./bloglist-backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./bloglist-backend:/usr/src/app
+    ports:
+      - 3003:3003
+    environment:
+      - MONGODB_URI=mongodb://the_username:the_password@mongo:27017/the_database
+      - SECRET=usemetohash911
+      - PORT=3003
+    container_name: bl-backend-prod
+    depends_on:
+      - mongo
+
+  app:
+    image: bl-frontend-prod
+    build:
+      context: ./bloglist-frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./bloglist-frontend:/usr/src/app
+    # ports:
+    #   - 3000:3000
+    container_name: bl-frontend-prod
+
+  nginx:
+    image: nginx:1.20.1
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - 8080:80
+    container_name: bl-revproxy-prod
+    depends_on:
+      - app
+      - server
